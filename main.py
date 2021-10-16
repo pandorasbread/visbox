@@ -8,7 +8,7 @@ import scipy.fftpack as fftpack
 import numpy as np
 import ffmpeg
 import librosa
-# pyplot.rcParams['animation.ffmpeg_path'] = 'X:\\SW Libraries\\ffmpeg\\bin'
+pyplot.rcParams['animation.ffmpeg_path'] = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
 from matplotlib import animation
 
 monodata = []
@@ -23,16 +23,8 @@ def parse_audio(audioData, maxfreq, framerate, blankSecondsAfter, bars):
     for dat in audioArray:
         monodata.append((dat[0] + dat[1]) / 2)
 
-    blankFrames = blankSecondsAfter * framerate
-    for blankFrame in range(blankFrames):
-        monodata.append(0)
-
-    # plot_audioTimeData(monodata)
-
-    # pyplot.ion()
-    # pyplot.show()
-
-    plot_audioFreqData(monodata, int(audioData.samplerate)/2, 1 / framerate, 0.025, maxfreq, bars)
+    plot_audioFreqDataLibrosa('fk.wav',22050, 1/framerate, 0.025, maxfreq, bars)
+    #plot_audioFreqData(monodata, int(audioData.samplerate)/2, 1 / framerate, 0.025, maxfreq, bars)
 
 
 def plot_audioTimeData(audioData):
@@ -40,20 +32,28 @@ def plot_audioTimeData(audioData):
     pyplot.plot(getTimeAxis(audioData), audioData)
     pyplot.title('False Knight, 10-20s, mono')
 
-
-def plot_audioFreqData(audioData, samplerate, skipParamMultiplier, windowMultiplier, maxfreq, bars):
-
+def plot_audioFreqDataLibrosa(audioFilename, samplerate, skipParamMultiplier, windowMultiplier, maxfreq, bars):
     updateInterval = samplerate / framerate
     # skip parameter multiplier is one over the framerate. we can use it as a multiplier to pass less parameters around.
     skipParam = int(samplerate * skipParamMultiplier)
     # window is frame length. decreasing it increases smear which could look more pleasing.
     window = int(samplerate * windowMultiplier)
-    (shortTimeFourierTransform, freqaxis) =
+    timeseries, samplerate = librosa.load(audioFilename)
+    shortTimeFourierTransform = np.abs(librosa.stft(timeseries, hop_length=skipParam, n_fft=2048*4))
+    spectrogram = librosa.amplitude_to_db(shortTimeFourierTransform, ref=np.max).T
 
-    # spectrumToShow = stft2level(shortTimeFourierTransform, round(len(frames) * maxfreq / samplerate)) if bars else shortTimeFourierTransform
-    spectrumToShow = stft2level(shortTimeFourierTransform,
-                                len(frames)) if bars else shortTimeFourierTransform
+    freqaxis = librosa.core.fft_frequencies(samplerate, 2048*4)
 
+    #if bars
+    #freqaxis should just be 0:barsnum-1
+    #spectrum should be a new array of averages across a spectrum
+
+
+    makeVideo(spectrogram, freqaxis, skipParamMultiplier)
+
+
+
+def makeVideo(spectrumToShow, freqaxis, skipParamMultiplier):
     print('Creating animation...')
     # create video
     tenPercentTicks = []
@@ -66,9 +66,9 @@ def plot_audioFreqData(audioData, samplerate, skipParamMultiplier, windowMultipl
     fig.set_size_inches(19.2, 10.8)
     configurePlot(fig, ax, maxfreq, bars, freqaxis)
     line, = ax.plot([], )
-    barData = ax.bar(freqaxis, spectrumToShow[0], align='center')
-    anim = animation.FuncAnimation(fig, animate, frames=len(frames) - 1,
-                                   fargs=(freqaxis, spectrumToShow, line, maxfreq, tenPercentTicks, bars, barData),
+    #barData = ax.bar(freqaxis, spectrumToShow, align='center')
+    anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1,
+                                   fargs=(freqaxis, spectrumToShow, line, maxfreq, tenPercentTicks, bars),
                                    interval=(skipParamMultiplier) * 1000)
 
     fpsCalc = int(1 / skipParamMultiplier)
@@ -89,13 +89,14 @@ def doSTFTManually(audioData, skipParam, window, samplerate):
     frames = enframe(audioData, skipParam, window)
     return stft(frames, 2048, samplerate)
 
-def animate(frame, axis, stftArray, line, maxfreq, progress, bars, barData):
+def animate(frame, axis, stftArray, line, maxfreq, progress, bars):
     parsedAxis = axis[axis <= maxfreq]
     if bars:
         for i in range(len(stftArray[frame])):
-            barData[i].set_height(stftArray[frame][i])
+            print('lol')
+            #barData[i].set_height(stftArray[frame][i])
     else:
-        line.set_data(axis[axis <= maxfreq], np.log(np.maximum(1, abs(stftArray[frame][axis <= maxfreq]) ** 2)))
+        line.set_data(axis, stftArray[frame])#np.log(np.maximum(1, abs(stftArray[frame][axis <= maxfreq]) ** 2)))
     if frame in progress:
         progress.pop(0)
         print('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
@@ -106,11 +107,11 @@ def animate(frame, axis, stftArray, line, maxfreq, progress, bars, barData):
 
 def configurePlot(fig, ax, maxfreq, bars, freqaxis):
     if bars:
-        ax.set_ylim([-10, 60])
+        ax.set_ylim([-80, 0])
 
     else:
         ax.set_xlim(0, maxfreq)
-        ax.set_ylim([-2, 10])
+        ax.set_ylim([-80, 0])
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
@@ -124,37 +125,6 @@ def configurePlot(fig, ax, maxfreq, bars, freqaxis):
             "axes.facecolor": (0.0, 1.0, 0.0, 0.0),  # green with alpha = 0%
             "savefig.facecolor": (0.0, 0.0, 1.0, 0.0),  # blue  with alpha = 0%
         })
-
-
-def drawGraphs(stft, freqaxis, max_freq, frame):
-    # pyplot.clf()
-    # pyplot.plot(211)
-    # pyplot.ylabel('Magnitude Squared STFT')
-    # pyplot.ylim(-10, 2)
-    # pyplot.xlabel('Frequency (Hertz)')
-    # pyplot.title('Spectrum of a frame from False Knight')
-
-    pyplot.plot(freqaxis[freqaxis <= max_freq], np.log(abs(stft[frame][freqaxis <= max_freq])))
-
-    # spectrogram = stft2level(shortTimeFourierTransform, int(tentwentyfour * max_freq / samplerate))
-    # pyplot.plot(spectrogram)
-
-    # this looks good for a line spectrogram
-    # pyplot.plot(212)
-    # pyplot.plot(freqaxis[freqaxis <= 20000], np.log(np.maximum(1, abs(stft[frame][freqaxis <= 20000]) ** 2)))
-
-    # pyplot.draw()
-
-    # pyplot.plot(getTimeAxisAtFrame(frames, 300), frames[300])
-    # pyplot.draw()
-
-    # fig.canvas.restore_region(background)
-
-    # redraw just the points
-    # ax.draw_artist(freqaxis[freqaxis <= max_freq], np.log(abs(stft[frame][freqaxis <= max_freq])))
-
-    # fill in the axes rectangle
-    # fig.canvas.blit(ax.bbox)
 
 
 def getTimeAxis(audioData):
@@ -197,7 +167,7 @@ def stft2level(stft_spectra, max_freq_bin):
 if __name__ == '__main__':
     # eventually pull in JSON object with wav, layout, and text data
 
-    bars = True
+    bars = False
     maxfreq = 8000
     framerate = 30
     blankSecondsAfter = 2
