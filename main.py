@@ -23,15 +23,13 @@ def parse_audio(audioData, maxfreq, framerate, bars, polar):
     for dat in audioArray:
         monodata.append((dat[0] + dat[1]) / 2)
 
-    plot_audioFreqDataLibrosa('fk.wav', 1/framerate, 0.025, bars, polar, maxfreq)
+    plot_audioFreqDataLibrosa('fk.wav', 1/framerate, bars, polar, maxfreq)
 
 
-def plot_audioFreqDataLibrosa(audioFilename, skipParamMultiplier, windowMultiplier, bars, polar, maxfreq):
+def plot_audioFreqDataLibrosa(audioFilename, skipParamMultiplier, bars, polar, maxfreq):
     timeseries, samplerate = librosa.load(audioFilename)
     # skip parameter multiplier is one over the framerate. we can use it as a multiplier to pass less parameters around.
     skipParam = int(samplerate * skipParamMultiplier)
-    # window is frame length. decreasing it increases smear which could look more pleasing.
-    window = int(samplerate * windowMultiplier)
     shortTimeFourierTransform = np.abs(librosa.stft(timeseries, hop_length=skipParam, n_fft=2048*4))
     spectrogram = librosa.amplitude_to_db(shortTimeFourierTransform, ref=np.max)
 
@@ -53,7 +51,6 @@ def plot_audioFreqDataLibrosa(audioFilename, skipParamMultiplier, windowMultipli
                 if (j > maxbarvalue):
                     maxbarvalue = j
             newfreq.append(freqaxis[i])
-        #run an average
 
         spectrogram = np.array(newspec)
         freqaxis = np.array(newfreq)
@@ -85,8 +82,8 @@ def makeVideo(spectrumToShow, freqaxis, skipParamMultiplier, bars, polar, maxbar
 
 
     if (bars != 0):
-        #100 width at 80 bars is perfect. These aren't scientific numbers, but they're a nice baseline.
-        defaultWidth = 100
+        #50 width at 80 bars is perfect. These aren't scientific numbers, but they're a nice baseline.
+        defaultWidth = 50
         defaultBars = 80
         barwidth = (defaultWidth) * (defaultBars / bars)
         if (polar):
@@ -95,7 +92,7 @@ def makeVideo(spectrumToShow, freqaxis, skipParamMultiplier, bars, polar, maxbar
             freqaxis = [element * barwidth for element in indexes]
             barData = ax.bar(freqaxis, spectrumToShow[0], align='center', width=barwidth, bottom = 20, color='black')
         else:
-            barData = ax.bar(freqaxis, spectrumToShow[0], align='center', width=barwidth)
+            barData = ax.bar(freqaxis, spectrumToShow[0], align='center', width=barwidth, color='black')
 
 
 
@@ -167,10 +164,11 @@ def configurePlot(fig, ax, maxfreq, bars, polar):
 if __name__ == '__main__':
     # eventually pull in JSON object with wav, layout, and text data
     bars = 80
-    polar = True
+    polar = False
     if (bars == 0):
         polar = False
-    maxfreq = 8000
+    #10k is pretty good for straight bars, 8k looks good in a circle
+    maxfreq = 10000
     framerate = 30
     audioFile = parse_audio_filepath('fk.wav')
     parse_audio(audioFile, maxfreq, framerate, bars, polar)
