@@ -1,0 +1,1 @@
+pyinstaller -F .\main.py --additional-hooks-dir "./extra-hooks" --hidden-import="sklearn.neighbors._partition_nodes"

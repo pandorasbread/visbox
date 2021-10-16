@@ -1,17 +1,15 @@
 import datetime
 import pathlib
 from datetime import time
-
 import matplotlib.pyplot as pyplot
 import matplotlib.animation as anim
-import scipy.fftpack as fftpack
 import numpy as np
 import ffmpeg
 import librosa
 import pydub
 import json
 
-pyplot.rcParams['animation.ffmpeg_path'] = 'C:\\ffmpeg\\bin\\ffmpeg.exe'
+pyplot.rcParams['animation.ffmpeg_path'] = '.\\ffmpeg.exe'
 from matplotlib import animation
 
 
