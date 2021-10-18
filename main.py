@@ -8,7 +8,7 @@ import ffmpeg
 import librosa
 import pydub
 import json
-
+import matplotlib.patheffects as path_effects
 pyplot.rcParams['animation.ffmpeg_path'] = '.\\ffmpeg.exe'
 from matplotlib import animation
 
@@ -80,10 +80,15 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     print('Creating animation...')
     # create video
 
+    #ax exists on fig.axes. maybe we need a better way to do this.
+    #image object also needs to be blitted maybe for speed.
     fig, ax, line = configurePlot()
-
+    axes = fig.axes
+    #img = axes[1].images[0]
     barData = getBarData(freqaxis, spectrumToShow[0], ax)
     percentageTicks = getPercentageTicksArray(spectrumToShow)
+
+    #don't pass in line, barData, img, whatever. Pass in a list of objects to display, then build out a list of artists to show.
 
     anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1,
                                    fargs=(freqaxis, spectrumToShow, line, percentageTicks, barData, maxbarvalue),
@@ -91,7 +96,10 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
 
     writervideo = animation.FFMpegWriter(fps=framerate)
     animationfilename = pathlib.Path(audio_file_path).stem + ' anim.mp4'
+    animStartTime = datetime.datetime.now()
     anim.save(animationfilename, writer=writervideo, dpi=dpiMultiplier)
+    delta = datetime.datetime.now() - animStartTime
+    print('Animating took ' + str(delta.seconds) + ' seconds.')
     print('Animation completed. Rendering and saving animation (this can take a while)...')
     input_video = ffmpeg.input(animationfilename)
     input_audio = ffmpeg.input('./' + pathlib.Path(audio_file_path).stem + '.wav')
@@ -107,7 +115,7 @@ def getPercentageTicksArray(dataToPlot):
     for num in range(len(dataToPlot)):
         if (num != 0 and num % tenPercent == 0):
             tenPercentTicks.append(num)
-    return tenPercentTicks;
+    return tenPercentTicks
 
 
 def getBarData(freqaxis, firstFrameData, ax):
@@ -127,8 +135,8 @@ def getBarData(freqaxis, firstFrameData, ax):
     else:
         return -1
 
+def animate(frame, freqaxis, stftArray, line, progress, barData, maxbarvalue):
 
-def animate(frame, axis, stftArray, line, progress, barData, maxbarvalue):
     if number_of_bars != 0:
         dbAdjustment = 80
 
@@ -141,12 +149,11 @@ def animate(frame, axis, stftArray, line, progress, barData, maxbarvalue):
             else:
                 barData[i].set_height((dbAdjustment + stftArray[frame][i]) * bar_scale)
     else:
-        line.set_data(axis, stftArray[frame])
+        line.set_data(freqaxis, stftArray[frame])
     if frame in progress:
         progress.pop(0)
         print('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
-    return line
-
+    return barData
 
 def configurePlot():
     if (polar):
@@ -158,8 +165,8 @@ def configurePlot():
         cleanCartesianPlot(ax)
 
     fig.set_size_inches(resolution_x/dpiMultiplier, resolution_y/dpiMultiplier)
-    ax.plot()
     line, = ax.plot([], )
+
 
     if number_of_bars != 0:
         ax.set_ylim([0, 80])
@@ -192,9 +199,20 @@ def createBackground(fig, ax):
     if (bk_img_path != ''):
         print('!!! IMAGE SPECIFIED, THIS WILL TAKE A LOT LONGER TO RENDER, SORRY!!!')
         img = pyplot.imread(bk_img_path)
+
         ax_image = fig.add_axes([0, 0, 1, 1], label="imagegraph", zorder=-99)
         cleanCartesianPlot(ax_image)
-        ax_image.imshow(img)
+
+        #ax_image.imshow(img, extent=(0,resolution_x,0,resolution_y), resample=False)
+
+        if (text != ''):
+            MESSAGE = ax_image.text(0.5, 0.1, text, fontsize='69', horizontalalignment='center', verticalalignment='center', color=text_color,
+                          transform=ax_image.transAxes)
+            if (use_text_outline):
+                MESSAGE.set_path_effects([path_effects.Stroke(linewidth=text_outline_width, foreground=text_outline_color),
+                                       path_effects.Normal()])
+        ax.patch.set_visible(False)
+        fig.patch.set_visible(False)
     elif (bk_img_color != ''):
         ax.set_facecolor(bk_img_color)
         fig.set_facecolor(bk_img_color)
@@ -205,6 +223,8 @@ def createBackground(fig, ax):
             "figure.facecolor": (1.0, 0.0, 0.0, 0.0),  # red   with alpha = 0%
             "axes.facecolor": (0.0, 1.0, 0.0, 0.0),  # green with alpha = 0%
             "savefig.facecolor": (0.0, 0.0, 1.0, 0.0),  # blue  with alpha = 0%
+            "axes.ymargin": 0.,
+            "axes.xmargin": 0.
         })
 
 def getxyResolutions(resolutionOption):
@@ -243,6 +263,16 @@ if __name__ == '__main__':
     audio_file_path = data["audio_file_path"]
     resolution_type = data["resolution"]
     resolution_x, resolution_y = getxyResolutions(resolution_type)
+
+    text = data["text"]
+    text_color = data["text_color"]
+    if (text_color == ''):
+        text_color = '#FFFFFF'
+    use_text_outline = data["use_text_outline"]
+    text_outline_color = data["text_outline_color"]
+    if (text_outline_color == ''):
+        text_outline_color = text_color
+    text_outline_width = data["text_outline_width"]
     dpiMultiplier = 100
     parse_audio()
 
