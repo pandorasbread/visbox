@@ -9,6 +9,9 @@ import librosa
 import pydub
 import json
 import matplotlib.patheffects as path_effects
+
+from drawable import DrawType, ShapeType, AxisType
+
 pyplot.rcParams['animation.ffmpeg_path'] = '.\\ffmpeg.exe'
 from matplotlib import animation
 
@@ -88,10 +91,11 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     barData = getBarData(freqaxis, spectrumToShow[0], ax)
     percentageTicks = getPercentageTicksArray(spectrumToShow)
 
-    #don't pass in line, barData, img, whatever. Pass in a list of objects to display, then build out a list of artists to show.
-
+    #don't pass in line, barData, img, whatever. Pass in a list of objects to display, then build out a list of artists to update.
+    #drawabes might still not work
+    drawables = []
     anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1,
-                                   fargs=(freqaxis, spectrumToShow, line, percentageTicks, barData, maxbarvalue),
+                                   fargs=(freqaxis, spectrumToShow, line, percentageTicks, barData, maxbarvalue, drawables),
                                    interval=(1 / framerate) * 1000)
 
     writervideo = animation.FFMpegWriter(fps=framerate)
@@ -135,7 +139,15 @@ def getBarData(freqaxis, firstFrameData, ax):
     else:
         return -1
 
-def animate(frame, freqaxis, stftArray, line, progress, barData, maxbarvalue):
+def animate(frame, freqaxis, stftArray, line, progress, barData, maxbarvalue, drawables):
+
+######replacement for below#############
+    for item in drawables:
+        if (item.graph_type == ShapeType.BAR):
+            draw_bars(item, frame)
+        if (item.graph_type == ShapeType.LINE):
+            draw_line(item, freqaxis)
+########################################
 
     if number_of_bars != 0:
         dbAdjustment = 80
@@ -154,6 +166,22 @@ def animate(frame, freqaxis, stftArray, line, progress, barData, maxbarvalue):
         progress.pop(0)
         print('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
     return barData
+
+def draw_bars(drawable, frame_num):
+    dbAdjustment = 80
+
+    for i in range(len(drawable.artist_info[frame_num])):
+        if (drawable.axis_type == AxisType.POLAR):
+            lowerlimit = 10
+            slope = (drawable.max_value + dbAdjustment - lowerlimit) / (drawable.max_value + dbAdjustment)
+            height = slope * (dbAdjustment + drawable.data[frame_num][i]) + lowerlimit
+            drawable.artist_info[i].set_height(height)
+        elif (drawable.axis_type == AxisType.CARTESIAN):
+            drawable.artist_info[i].set_height((dbAdjustment + drawable.data[frame_num][i]) * bar_scale)
+
+def draw_line(drawable, freqaxis, frame_num):
+    drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
+
 
 def configurePlot():
     if (polar):
