@@ -193,27 +193,33 @@ def getLineData(freqaxis, ax, linecolor, fillcolor):
     return line
 
 def getBarData(freqaxis, firstFrameData, ax, barcolor, baredgecolor):
-    if (bars):
-        # 75 width at 80 bars is perfect. These aren't scientific numbers, but they're a nice baseline.
-        defaultWidth = 75
-        defaultBars = 80
-        barwidth = (defaultWidth) * (defaultBars / number_of_points)
-        if (polar):
-            barwidth = 2 * np.pi / len(freqaxis)
-            indexes = list(range(1, len(freqaxis) + 1))
-            freqaxis = [element * barwidth for element in indexes]
-            return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, bottom=20, color=barcolor,
-                          linewidth=1, edgecolor=baredgecolor)
-        else:
-            return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, color=barcolor, linewidth=1, edgecolor=baredgecolor)
+    # 75 width at 80 bars is perfect. These aren't scientific numbers, but they're a nice baseline.
+    #TODO: make this look not-bad at other resolutions
+    defaultWidth = 75
+    defaultBars = 80
+    barwidth = (defaultWidth) * (defaultBars / number_of_points)
+    if (ax.zorder == -10):
+        #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
+        barwidth = barwidth * 1.5
+    if (polar):
+        barwidth = 2 * np.pi / len(freqaxis)
+        if (ax.zorder == -10):
+            #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
+            barwidth = barwidth * 1.25
+        indexes = list(range(1, len(freqaxis) + 1))
+        freqaxis = [element * barwidth for element in indexes]
+        return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, bottom=20, color=barcolor,
+                      linewidth=1, edgecolor=baredgecolor)
     else:
-        return -1
+        return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, color=barcolor, linewidth=1, edgecolor=baredgecolor, zorder=ax.zorder)
+
 
 def animate(frame, freqaxis, progress, drawables):
 
     artists = []
 ######replacement for below#############
     for item in drawables:
+        # TODO: THIS SHOULDN'T BE DOING ANY MATH. Do transformations before getting here.
         if (item.shape_type == ShapeType.BAR):
             draw_bars(item, frame)
             artists.append(list(item.artist_info))
@@ -297,13 +303,12 @@ def createBackground(fig, ax):
         ax_image = createBackgroundAxisIfNotExists(fig)
         cleanCartesianPlot(ax_image)
         ax_image.imshow(img, extent=(0,resolution_x,0,resolution_y), resample=False)
-        ax.patch.set_visible(False)
         fig.patch.set_visible(False)
     elif (bk_img_color != ''):
-        ax.set_facecolor(bk_img_color)
+        ax_image = createBackgroundAxisIfNotExists(fig)
+        ax_image.set_facecolor(bk_img_color)
         fig.set_facecolor(bk_img_color)
     else:
-        ax.patch.set_visible(False)
         fig.patch.set_visible(False)
         pyplot.rcParams.update({
             "figure.facecolor": (1.0, 0.0, 0.0, 0.0),  # red   with alpha = 0%
@@ -312,6 +317,8 @@ def createBackground(fig, ax):
             "axes.ymargin": 0.,
             "axes.xmargin": 0.
         })
+
+    ax.patch.set_visible(False)
 
 def addText(fig):
     ax_image = createBackgroundAxisIfNotExists(fig)

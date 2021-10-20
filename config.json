@@ -16,5 +16,5 @@
 "text_outline_width": 2,
 "framerate": 30,
 "resolutionOptions": ["4k", "1080p", "twitter", "720p"],
-"resolution": "twitter"
+"resolution": "1080p"
 }
