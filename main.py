@@ -104,22 +104,24 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
         blank_data = []
         ghost_frames = int(framerate/4)
         additional_frames += ghost_frames
-        blank_freq_plot = [0] * len(freqaxis)
-        for i in range(ghost_frames):
-            blank_data.append(blank_freq_plot)
-        blank_data = np.array(blank_data)
+        #blank_freq_plot = [0] * len(freqaxis)
+        #for i in range(ghost_frames):
+        #    blank_data.append(blank_freq_plot)
+        #blank_data = np.array(blank_data)
         ghostDecayRate = (-maxbarvalue)/framerate
-        ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate)
-        ghost_data = np.concatenate((blank_data, ghost_decay_data))
-        spectrumToShow = np.concatenate((spectrumToShow, blank_data))
+        ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate/2)
+        #ghost_data = np.concatenate((blank_data, ghost_decay_data))
+        #spectrumToShow = np.concatenate((spectrumToShow, blank_data))
         ghostArtistData = []
         if (bars):
-            ghostArtistData = getBarData(freqaxis, ghost_data[0], getAxis(fig, -10), ghost_color, ghost_color)
+            ghostArtistData = getBarData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
         else:
             if polar:
                 freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
             ghostArtistData = getLineData(freqaxis, getAxis(fig, -10), ghost_color, ghost_color)
-        ghost_drawable = Drawable(ghostArtistData, ghost_data, visAxisType, visShapeType, maxbarvalue)
+            ghostFillArtist = getAxis(fig, -10).fill_between(freqaxis, 0, ghost_decay_data[0], facecolor = ghost_color)
+            ghostArtistData.append(ghostFillArtist)
+        ghost_drawable = Drawable(ghostArtistData, ghost_decay_data, visAxisType, visShapeType, maxbarvalue)
         drawables.append(ghost_drawable)
 
 
@@ -130,6 +132,8 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
         if polar:
             freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
         artistData = getLineData(freqaxis, getAxis(fig, 0), bar_edge_color, bar_color)
+        fillArtist = getAxis(fig,0).fill_between(freqaxis, 0, spectrumToShow[0], facecolor = bar_color)
+        artistData.append(fillArtist)
     visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
     drawables.append(visualizer_drawable)
 
@@ -159,7 +163,7 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
 def getGhostDecay(visualizerData, rate_of_decay):
     decay_data = [np.array([0] * len(visualizerData[0])) for _ in range(len(visualizerData))]
     freq_decay_counter = [1] * len(visualizerData[0])
-    framesBeforeDecrease = framerate/6 #1/6 of a second seems fine right?
+    framesBeforeDecrease = round(framerate/6) #1/x of a second seems fine right?
     for i in range(len(visualizerData)):
         if i == 0:
             decay_data[i] = visualizerData[i]
@@ -169,7 +173,7 @@ def getGhostDecay(visualizerData, rate_of_decay):
                 decay_data[i][freqIdx] = visualizerData[i][freqIdx]
                 freq_decay_counter[freqIdx] = 1
             else:
-                if (freq_decay_counter[freqIdx] > framesBeforeDecrease and decay_data[i-1][freqIdx] >= -80+rate_of_decay):
+                if (freq_decay_counter[freqIdx] > framesBeforeDecrease and decay_data[i-1][freqIdx] >= rate_of_decay):
                     decay_data[i][freqIdx]= decay_data[i-1][freqIdx] + rate_of_decay
                 else:
                     decay_data[i][freqIdx] = decay_data[i - 1][freqIdx]
@@ -198,14 +202,14 @@ def getBarData(freqaxis, firstFrameData, ax, barcolor, baredgecolor):
     defaultWidth = 75
     defaultBars = 80
     barwidth = (defaultWidth) * (defaultBars / number_of_points)
-    if (ax.zorder == -10):
+    #if (ax.zorder == -10):
         #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
-        barwidth = barwidth * 1.5
+        #barwidth = barwidth * 1.5
     if (polar):
         barwidth = 2 * np.pi / len(freqaxis)
-        if (ax.zorder == -10):
+        #if (ax.zorder == -10):
             #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
-            barwidth = barwidth * 1.25
+            #barwidth = barwidth * 1.25
         indexes = list(range(1, len(freqaxis) + 1))
         freqaxis = [element * barwidth for element in indexes]
         return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, bottom=20, color=barcolor,
@@ -225,7 +229,7 @@ def animate(frame, freqaxis, progress, drawables):
             artists.append(list(item.artist_info))
         if (item.shape_type == ShapeType.LINE):
             draw_line(item, freqaxis, frame)
-            artists.append([item.artist_info])
+            artists.append(list(item.artist_info))
 
 ########################################
     if frame in progress:
@@ -248,6 +252,11 @@ def draw_line(drawable, freqaxis, frame_num):
         drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
     elif (drawable.axis_type == AxisType.CARTESIAN):
         drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
+    drawable.artist_info[1].axes.collections.clear()
+    fillcolor = bar_color
+    if (drawable.artist_info[1].axes.zorder == -10):
+        fillcolor = '#2F2F2F'
+    drawable.artist_info[1].axes.fill_between(freqaxis, 0, drawable.data[frame_num], facecolor = fillcolor)
 
 def getPolarValue(value, maxValue, minValue = 10):
     slope = (maxValue - minValue) / (maxValue)

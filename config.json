@@ -1,7 +1,7 @@
 {
 "audio_file_path": "fk.wav",
-"number_of_bars": 80,
-"polar": false,
+"number_of_bars": 0,
+"polar": true,
 "ghost": true,
 "bar_scale": 0.5,
 "bar_color": "#9933FF",
@@ -16,5 +16,5 @@
 "text_outline_width": 2,
 "framerate": 30,
 "resolutionOptions": ["4k", "1080p", "twitter", "720p"],
-"resolution": "1080p"
+"resolution": "twitter"
 }
