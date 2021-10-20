@@ -116,7 +116,8 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
         if (bars):
             ghostArtistData = getBarData(freqaxis, ghost_data[0], getAxis(fig, -10), ghost_color, ghost_color)
         else:
-            freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
+            if polar:
+                freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
             ghostArtistData = getLineData(freqaxis, getAxis(fig, -10), ghost_color, ghost_color)
         ghost_drawable = Drawable(ghostArtistData, ghost_data, visAxisType, visShapeType, maxbarvalue)
         drawables.append(ghost_drawable)
@@ -126,7 +127,8 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     if (bars):
         artistData = getBarData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
     else:
-        freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
+        if polar:
+            freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
         artistData = getLineData(freqaxis, getAxis(fig, 0), bar_edge_color, bar_color)
     visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
     drawables.append(visualizer_drawable)
