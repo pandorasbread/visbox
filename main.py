@@ -349,8 +349,13 @@ def addGhostVisualizer(fig):
     ghost_axis.patch.set_visible(False)
 
 def createBackgroundAxisIfNotExists(fig):
-    return next((axis for axis in fig.axes if axis.zorder ==-99),
-                fig.add_axes([0, 0, 1, 1], label="background", zorder=-99))
+    for axis in fig.axes:
+        if axis.zorder == -99:
+            return axis
+    return fig.add_axes([0, 0, 1, 1], label="background", zorder=-99)
+
+    #return next((axis for axis in list(fig.axes) if axis.zorder ==-99),
+    #            fig.add_axes([0, 0, 1, 1], label="background", zorder=-99))
 
 def getAxis(fig, zorder):
     return next((axis for axis in fig.axes if axis.zorder == zorder), None)
