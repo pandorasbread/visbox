@@ -1,21 +1,30 @@
 import datetime
-import pathlib
 from datetime import time
-import matplotlib.pyplot as pyplot
-import matplotlib.animation as anim
-import numpy as np
+import json
+import pathlib
+from pathlib import Path
+
 import ffmpeg
 import librosa
-import pydub
-import json
+from matplotlib import animation
+import matplotlib.animation as anim
 import matplotlib.patheffects as path_effects
+import matplotlib.pyplot as pyplot
+import numpy as np
+import pydub
 
 import drawable
 from drawable import AxisType, ShapeType, Drawable
 
-pyplot.rcParams['animation.ffmpeg_path'] = '.\\ffmpeg.exe'
-from matplotlib import animation
+def determineFfmpegPath():
+    path = Path('.\\ffmpeg.exe')
 
+    if (path.is_file()):
+        return '.\\ffmpeg.exe'
+
+    return 'ffmpeg'
+
+pyplot.rcParams['animation.ffmpeg_path'] = determineFfmpegPath()
 
 def parse_audio():
     plot_audioFreqDataLibrosa()
