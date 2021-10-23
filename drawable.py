@@ -21,3 +21,4 @@ class AxisType(Enum):
 class ShapeType(Enum):
     LINE = "LINE"
     BAR = "BAR"
+    IMAGE = "BK"
