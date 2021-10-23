@@ -3,7 +3,9 @@ Visualizer Kit for social media and video editing
 
 This is to be built using pyinstaller or run on it's own.
 
-`ffmpeg-python` library is the library you need, not `ffmpeg`.
+## Dependencies
+- [FFmpeg](https://www.ffmpeg.org/download.html)
+- `pip install ffmpeg-pythong librosa matplotlib numpy pydub`
 
 ## JSON SETTINGS
 ### These are the various configurations and what they change if they are modified.
