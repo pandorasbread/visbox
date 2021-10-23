@@ -86,8 +86,23 @@ def getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate):
     freqaxis = np.array(newfreq)
 
     spectrogram = spectrogram.T
+    if (polar):
+        minbarvalue = 10
+        if (not bars):
+            minbarvalue = 0
+        func = np.vectorize(getPolarValue)
+        polarizedspectrogram = func(spectrogram, maxbarvalue, minbarvalue)
+        spectrogram = polarizedspectrogram
+
+    if (bars and bar_scale != 1.0):
+        scaledSpec = np.vectorize(applyBarScale)(spectrogram)
+        spectrogram = scaledSpec
+
     return spectrogram, freqaxis, maxbarvalue
 
+
+def applyBarScale(value):
+    return value * bar_scale
 
 def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     print('Creating animation...')
@@ -96,7 +111,6 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     #ax exists on fig.axes. maybe we need a better way to do this.
     #image object also needs to be blitted maybe for speed.
     fig = configurePlot()
-    drawables = []
     additional_frames = 0
 
     visAxisType = AxisType.CARTESIAN
@@ -146,13 +160,22 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
     drawables.append(visualizer_drawable)
 
+    if (getAxis(fig, -99) != None):
+        bkAxis = getAxis(fig, -99)
+        bkArtists = []
+        if (len(bkAxis.texts) > 0):
+            bkArtists.append(bkAxis.texts)
+        if (len(bkAxis.images) > 0):
+            bkArtists.append(bkAxis.images)
+        background_drawable = Drawable(bkArtists, None, AxisType.IMAGE, ShapeType.IMAGE)
+        drawables.append(background_drawable)
     percentageTicks = getPercentageTicksArray(len(spectrumToShow))
 
     #don't pass in line, barData, img, whatever. Pass in a list of objects to display, then build out a list of artists to update.
     #drawabes might still not work
 
-    anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1,
-                                   fargs=(freqaxis, percentageTicks, drawables),
+    anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1, init_func=initAnimation,
+                                   fargs=(freqaxis, percentageTicks, drawables), blit = True,
                                    interval=(1 / framerate) * 1000)
 
     writervideo = animation.FFMpegWriter(fps=framerate)
@@ -211,14 +234,9 @@ def getBarData(freqaxis, firstFrameData, ax, barcolor, baredgecolor):
     defaultWidth = 75
     defaultBars = 80
     barwidth = (defaultWidth) * (defaultBars / number_of_points)
-    #if (ax.zorder == -10):
-        #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
-        #barwidth = barwidth * 1.5
+
     if (polar):
         barwidth = 2 * np.pi / len(freqaxis)
-        #if (ax.zorder == -10):
-            #TODO: might have to play arund with these width values, or scale them for the screenwidth or something.
-            #barwidth = barwidth * 1.25
         indexes = list(range(1, len(freqaxis) + 1))
         freqaxis = [element * barwidth for element in indexes]
         return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, bottom=20, color=barcolor,
@@ -226,19 +244,29 @@ def getBarData(freqaxis, firstFrameData, ax, barcolor, baredgecolor):
     else:
         return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, color=barcolor, linewidth=1, edgecolor=baredgecolor, zorder=ax.zorder)
 
+def initAnimation():
+    artists = []
+    for item in drawables:
+        if (item.shape_type == ShapeType.BAR):
+            artists.extend(list(item.artist_info))
+        if (item.shape_type == ShapeType.LINE):
+            artists.extend(list(item.artist_info))
+        if (item.axis_type == AxisType.IMAGE):
+            for artist in item.artist_info:
+                artists.extend(list(artist))
+
+    return artists
 
 def animate(frame, freqaxis, progress, drawables):
 
     artists = []
-######replacement for below#############
     for item in drawables:
-        # TODO: THIS SHOULDN'T BE DOING ANY MATH. Do transformations before getting here.
         if (item.shape_type == ShapeType.BAR):
             draw_bars(item, frame)
-            artists.append(list(item.artist_info))
+            artists.extend(list(item.artist_info))
         if (item.shape_type == ShapeType.LINE):
             draw_line(item, freqaxis, frame)
-            artists.append(list(item.artist_info))
+            artists.extend(list(item.artist_info))
 
 ########################################
     if frame in progress:
@@ -248,19 +276,13 @@ def animate(frame, freqaxis, progress, drawables):
 
 def draw_bars(drawable, frame_num):
     for i in range(len(drawable.data[frame_num])):
-        if (drawable.axis_type == AxisType.POLAR):
-            height = getPolarValue(drawable.data[frame_num][i], drawable.max_value)
-            drawable.artist_info[i].set_height(height)
-        elif (drawable.axis_type == AxisType.CARTESIAN):
-            drawable.artist_info[i].set_height((drawable.data[frame_num][i]) * bar_scale)
+        drawable.artist_info[i].set_height(drawable.data[frame_num][i])
+
 
 def draw_line(drawable, freqaxis, frame_num):
-    if (drawable.axis_type == AxisType.POLAR):
-        for i in range(len(drawable.data[frame_num])):
-            drawable.data[frame_num][i] = getPolarValue(drawable.data[frame_num][i], drawable.max_value, 0)
-        drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
-    elif (drawable.axis_type == AxisType.CARTESIAN):
-        drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
+
+    drawable.artist_info[0].set_data(freqaxis, drawable.data[frame_num])
+
     drawable.artist_info[1].axes.collections.clear()
     fillcolor = bar_color
     if (drawable.artist_info[1].axes.zorder == -10):
@@ -362,9 +384,6 @@ def createBackgroundAxisIfNotExists(fig):
         if axis.zorder == -99:
             return axis
     return fig.add_axes([0, 0, 1, 1], label="background", zorder=-99)
-
-    #return next((axis for axis in list(fig.axes) if axis.zorder ==-99),
-    #            fig.add_axes([0, 0, 1, 1], label="background", zorder=-99))
 
 def getAxis(fig, zorder):
     return next((axis for axis in fig.axes if axis.zorder == zorder), None)
