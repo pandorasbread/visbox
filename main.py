@@ -411,8 +411,9 @@ if __name__ == '__main__':
     # I'm pretty sure i can get a neat polar line. Might redo this later.
     if (number_of_points == 0):
         bars = False
+        number_of_points = 80
     #We need to do hacky shit to have a default amount of 80 line points.. ehhghhhhh
-    number_of_points = 80
+
 
     # 10k is pretty good for straight bars, 8k looks good in a circle
     max_frequency = data["max_frequency"]
