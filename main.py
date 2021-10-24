@@ -362,7 +362,7 @@ def createBackground(fig, ax):
 
 def addText(fig):
     ax_image = createBackgroundAxisIfNotExists(fig)
-    message = ax_image.text(0.5, 0.1, text, fontsize='69', horizontalalignment='center', verticalalignment='center',
+    message = ax_image.text(0.5, 0.05, text, fontsize='50', horizontalalignment='center', verticalalignment='center',
                             color=text_color,
                             transform=ax_image.transAxes)
     if (use_text_outline):
