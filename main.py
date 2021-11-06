@@ -131,29 +131,14 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
 
     if (getAxis(fig, -10) != None):
         ghost_color = '#2F2F2F'
-        blank_data = []
-        ghost_frames = int(framerate/4)
         ghostDecayRate = (-maxbarvalue)/framerate
         ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate/2)
-
-        ghostArtistData = []
-        if (bars):
-            ghostArtistData = getBarData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
-        else:
-            ghostArtistData = getLineData(freqaxis, getAxis(fig, -10), ghost_color, ghost_color)
-            ghostFillArtist = getAxis(fig, -10).fill_between(freqaxis, 0, ghost_decay_data[0], facecolor = ghost_color)
-            ghostArtistData.append(ghostFillArtist)
+        ghostArtistData = getArtistData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
         ghost_drawable = Drawable(ghostArtistData, ghost_decay_data, visAxisType, visShapeType, maxbarvalue)
         drawables.append(ghost_drawable)
 
 
-    artistData = []
-    if (bars):
-        artistData = getBarData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
-    else:
-        artistData = getLineData(freqaxis, getAxis(fig, 0), bar_edge_color, bar_color)
-        fillArtist = getAxis(fig,0).fill_between(freqaxis, 0, spectrumToShow[0], facecolor = bar_color)
-        artistData.append(fillArtist)
+    artistData = getArtistData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
     visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
     drawables.append(visualizer_drawable)
 
@@ -211,6 +196,15 @@ def getGhostDecay(visualizerData, rate_of_decay):
 
     return np.array(decay_data)
 
+def getArtistData(freqaxis, firstFrameData, axis, fillColor, edgeColor):
+    artistData = []
+    if (bars):
+        artistData = getBarData(freqaxis, firstFrameData, axis, fillColor, edgeColor)
+    else:
+        artistData = getLineData(freqaxis, axis, edgeColor, fillColor)
+        fillArtist = axis.fill_between(freqaxis, 0, firstFrameData, facecolor = fillColor)
+        artistData.append(fillArtist)
+    return artistData
 
 
 def getPercentageTicksArray(totalNumFrames):
@@ -242,7 +236,6 @@ def getBarWidth(axisLength = 0):
     if (polar):
         barwidth = 2 * np.pi / axisLength
     return barwidth
-
 
 def initAnimation():
     artists = []
@@ -277,7 +270,6 @@ def animate(frame, freqaxis, progress, drawables):
 def draw_bars(drawable, frame_num):
     for i in range(len(drawable.data[frame_num])):
         drawable.artist_info[i].set_height(drawable.data[frame_num][i])
-
 
 def draw_line(drawable, freqaxis, frame_num):
 
