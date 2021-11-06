@@ -1,5 +1,32 @@
 class Settings:
 
+    def __init__(self):
+        #load the most basic data
+        self.number_of_points = 80
+        self.polar = True
+        self.bars = True
+        # 10k is pretty good for straight bars, 8k looks good in a circle
+        self.max_frequency = 10000
+        self.bar_color = '#000000'
+        self.bar_edge_color = self.bar_color
+        self.bar_scale = 1.0
+        self.framerate = 30
+        self.bk_img_path = ''
+        self.bk_img_color = '#FFFFFF'
+        self.audio_file_path = 'visboxsample.wav'
+        self.resolution_type = 'twitter'
+        self.resolution_x, self.resolution_y = self.getxyResolutions(self.resolution_type)
+        self.text = ''
+        self.text_color = '#FFFFFF'
+        self.use_text_outline = True
+        self.text_outline_color = '#000000'
+        self.text_outline_width = 2
+        self.ghost = True
+        self.dpiMultiplier = 100
+        self.demo = True
+
+
+
     def __init__(self, data):
         self.number_of_points = data["number_of_bars"]
         self.polar = data["polar"]
@@ -36,6 +63,7 @@ class Settings:
         self.text_outline_width = data["text_outline_width"]
         self.ghost = data["ghost"]
         self.dpiMultiplier = 100
+        self.demo = False
 
     def getxyResolutions(self, resolutionOption):
         if (resolutionOption == "4k"):
