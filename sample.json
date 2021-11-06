@@ -1,0 +1,20 @@
+{
+"audio_file_path": "visboxsample.wav",
+"number_of_bars": 80,
+"polar": true,
+"ghost": false,
+"bar_scale": 1.0,
+"bar_color": "#000000",
+"bar_edge_color": "#000000",
+"max_frequency": 10000,
+"background_img_path": "",
+"background_color": "#FFFFFF",
+"text": "",
+"text_color": "#FFFFFF",
+"use_text_outline": true,
+"text_outline_color": "#000000",
+"text_outline_width": 2,
+"framerate": 30,
+"resolutionOptions": ["4k", "1080p", "twitter", "720p"],
+"resolution": "twitter"
+}

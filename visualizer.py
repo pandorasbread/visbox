@@ -9,10 +9,12 @@ import matplotlib.pyplot as pyplot
 import numpy as np
 import pydub
 from drawable import AxisType, ShapeType, Drawable
+from gui import Gui
+from settings import Settings
 
 class Visualizer:
 
-    def __init__(self, settings):
+    def __init__(self, settings: Settings):
         self.settings = settings
         self.drawables = []
         pyplot.rcParams['animation.ffmpeg_path'] = self.determineFfmpegPath()
@@ -43,6 +45,15 @@ class Visualizer:
 
         print('Loading data from audio file.')
         return librosa.load(filepath)
+
+    def show_gui(self):
+        gui = Gui(self.settings)
+        gui.handle_events()
+        #timeseries, samplerate = self.loadFromFile()
+        #spectrogram, freqaxis, maxbarvalue = self.getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate)
+        #fig = self.configurePlot()
+        #self.createDrawables(fig, spectrogram, freqaxis, maxbarvalue)
+
 
     def generate_visualizer(self):
         timeseries, samplerate = self.loadFromFile()
