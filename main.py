@@ -3,7 +3,7 @@ from datetime import time
 import json
 import pathlib
 from pathlib import Path
-
+import logging
 import ffmpeg
 import librosa
 from matplotlib import animation
@@ -82,8 +82,8 @@ def getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate):
                 maxbarvalue = j
         newfreq.append(freqaxis[i])
 
+    freqaxis = np.array(arrange_freq_axis_for_chart_type(newfreq))
     spectrogram = np.array(newspec)
-    freqaxis = np.array(newfreq)
 
     spectrogram = spectrogram.T
     if (polar):
@@ -100,6 +100,14 @@ def getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate):
 
     return spectrogram, freqaxis, maxbarvalue
 
+def arrange_freq_axis_for_chart_type(freqaxisData):
+    if polar:
+        if bars:
+            indexes = list(range(1, len(freqaxisData) + 1))
+            return [element * getBarWidth(len(freqaxisData)) for element in indexes]
+        else:
+            return np.linspace(0, 2. * np.pi, num=number_of_points)
+    return freqaxisData
 
 def applyBarScale(value):
     return value * bar_scale
@@ -111,7 +119,6 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     #ax exists on fig.axes. maybe we need a better way to do this.
     #image object also needs to be blitted maybe for speed.
     fig = configurePlot()
-    additional_frames = 0
 
     visAxisType = AxisType.CARTESIAN
     visShapeType = ShapeType.LINE
@@ -126,21 +133,13 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
         ghost_color = '#2F2F2F'
         blank_data = []
         ghost_frames = int(framerate/4)
-        additional_frames += ghost_frames
-        #blank_freq_plot = [0] * len(freqaxis)
-        #for i in range(ghost_frames):
-        #    blank_data.append(blank_freq_plot)
-        #blank_data = np.array(blank_data)
         ghostDecayRate = (-maxbarvalue)/framerate
         ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate/2)
-        #ghost_data = np.concatenate((blank_data, ghost_decay_data))
-        #spectrumToShow = np.concatenate((spectrumToShow, blank_data))
+
         ghostArtistData = []
         if (bars):
             ghostArtistData = getBarData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
         else:
-            if polar:
-                freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
             ghostArtistData = getLineData(freqaxis, getAxis(fig, -10), ghost_color, ghost_color)
             ghostFillArtist = getAxis(fig, -10).fill_between(freqaxis, 0, ghost_decay_data[0], facecolor = ghost_color)
             ghostArtistData.append(ghostFillArtist)
@@ -152,8 +151,6 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     if (bars):
         artistData = getBarData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
     else:
-        if polar:
-            freqaxis = np.linspace(0, 2. * np.pi, num=number_of_points)
         artistData = getLineData(freqaxis, getAxis(fig, 0), bar_edge_color, bar_color)
         fillArtist = getAxis(fig,0).fill_between(freqaxis, 0, spectrumToShow[0], facecolor = bar_color)
         artistData.append(fillArtist)
@@ -169,10 +166,8 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
             bkArtists.append(bkAxis.images)
         background_drawable = Drawable(bkArtists, None, AxisType.IMAGE, ShapeType.IMAGE)
         drawables.append(background_drawable)
-    percentageTicks = getPercentageTicksArray(len(spectrumToShow))
 
-    #don't pass in line, barData, img, whatever. Pass in a list of objects to display, then build out a list of artists to update.
-    #drawabes might still not work
+    percentageTicks = getPercentageTicksArray(len(spectrumToShow))
 
     anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1, init_func=initAnimation,
                                    fargs=(freqaxis, percentageTicks, drawables), blit = True,
@@ -191,6 +186,8 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     print('Saving...')
     ffmpeg.concat(input_video, input_audio, v=1, a=1).output(filename, **{'c:v': 'libx265'}, crf=20).run()
     print('Waveform complete!')
+    delta2 = datetime.datetime.now() - animStartTime
+    print('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str((len(spectrumToShow)-1)/framerate) + ' second video.')
 
 def getGhostDecay(visualizerData, rate_of_decay):
     decay_data = [np.array([0] * len(visualizerData[0])) for _ in range(len(visualizerData))]
@@ -229,20 +226,23 @@ def getLineData(freqaxis, ax, linecolor, fillcolor):
     return line
 
 def getBarData(freqaxis, firstFrameData, ax, barcolor, baredgecolor):
+
+    if (polar):
+        return ax.bar(freqaxis, firstFrameData, align='center', width=getBarWidth(len(freqaxis)), bottom=20, color=barcolor,
+                      linewidth=1, edgecolor=baredgecolor)
+    else:
+        return ax.bar(freqaxis, firstFrameData, align='center', width=getBarWidth(), color=barcolor, linewidth=1, edgecolor=baredgecolor, zorder=ax.zorder)
+
+def getBarWidth(axisLength = 0):
     # 75 width at 80 bars is perfect. These aren't scientific numbers, but they're a nice baseline.
-    #TODO: make this look not-bad at other resolutions
+    # TODO: make this look not-bad at other resolutions
     defaultWidth = 75
     defaultBars = 80
     barwidth = (defaultWidth) * (defaultBars / number_of_points)
-
     if (polar):
-        barwidth = 2 * np.pi / len(freqaxis)
-        indexes = list(range(1, len(freqaxis) + 1))
-        freqaxis = [element * barwidth for element in indexes]
-        return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, bottom=20, color=barcolor,
-                      linewidth=1, edgecolor=baredgecolor)
-    else:
-        return ax.bar(freqaxis, firstFrameData, align='center', width=barwidth, color=barcolor, linewidth=1, edgecolor=baredgecolor, zorder=ax.zorder)
+        barwidth = 2 * np.pi / axisLength
+    return barwidth
+
 
 def initAnimation():
     artists = []
