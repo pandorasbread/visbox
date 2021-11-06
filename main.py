@@ -26,9 +26,6 @@ def determineFfmpegPath():
 
 pyplot.rcParams['animation.ffmpeg_path'] = determineFfmpegPath()
 
-def parse_audio():
-    plot_audioFreqDataLibrosa()
-
 
 def loadFromFile():
     filepath = audio_file_path
@@ -48,11 +45,12 @@ def loadFromFile():
     return librosa.load(filepath)
 
 
-def plot_audioFreqDataLibrosa():
+def generate_visualizer():
     timeseries, samplerate = loadFromFile()
     spectrogram, freqaxis, maxbarvalue = getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate)
-
-    makeVideo(spectrogram, freqaxis, maxbarvalue)
+    fig = configurePlot()
+    createDrawables(fig, spectrogram, freqaxis, maxbarvalue)
+    makeVideo(fig, freqaxis, len(spectrogram))
 
 
 def getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate):
@@ -112,52 +110,13 @@ def arrange_freq_axis_for_chart_type(freqaxisData):
 def applyBarScale(value):
     return value * bar_scale
 
-def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
+def makeVideo(fig, freqaxis, dataLength):
     print('Creating animation...')
     # create video
-
-    #ax exists on fig.axes. maybe we need a better way to do this.
-    #image object also needs to be blitted maybe for speed.
-    fig = configurePlot()
-
-    visAxisType = AxisType.CARTESIAN
-    visShapeType = ShapeType.LINE
-    if (polar):
-        visAxisType = AxisType.POLAR
-
-
-    if (bars):
-        visShapeType = ShapeType.BAR
-
-    if (getAxis(fig, -10) != None):
-        ghost_color = '#2F2F2F'
-        ghostDecayRate = (-maxbarvalue)/framerate
-        ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate/2)
-        ghostArtistData = getArtistData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
-        ghost_drawable = Drawable(ghostArtistData, ghost_decay_data, visAxisType, visShapeType, maxbarvalue)
-        drawables.append(ghost_drawable)
-
-
-    artistData = getArtistData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
-    visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
-    drawables.append(visualizer_drawable)
-
-    if (getAxis(fig, -99) != None):
-        bkAxis = getAxis(fig, -99)
-        bkArtists = []
-        if (len(bkAxis.texts) > 0):
-            bkArtists.append(bkAxis.texts)
-        if (len(bkAxis.images) > 0):
-            bkArtists.append(bkAxis.images)
-        background_drawable = Drawable(bkArtists, None, AxisType.IMAGE, ShapeType.IMAGE)
-        drawables.append(background_drawable)
-
-    percentageTicks = getPercentageTicksArray(len(spectrumToShow))
-
-    anim = animation.FuncAnimation(fig, animate, frames=len(spectrumToShow) - 1, init_func=initAnimation,
+    percentageTicks = getPercentageTicksArray(dataLength)
+    anim = animation.FuncAnimation(fig, animate, frames=dataLength - 1, init_func=initAnimation,
                                    fargs=(freqaxis, percentageTicks, drawables), blit = True,
                                    interval=(1 / framerate) * 1000)
-
     writervideo = animation.FFMpegWriter(fps=framerate)
     animationfilename = pathlib.Path(audio_file_path).stem + ' anim.mp4'
     animStartTime = datetime.datetime.now()
@@ -172,7 +131,7 @@ def makeVideo(spectrumToShow, freqaxis, maxbarvalue):
     ffmpeg.concat(input_video, input_audio, v=1, a=1).output(filename, **{'c:v': 'libx265'}, crf=20).run()
     print('Waveform complete!')
     delta2 = datetime.datetime.now() - animStartTime
-    print('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str((len(spectrumToShow)-1)/framerate) + ' second video.')
+    print('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str((dataLength-1)/framerate) + ' second video.')
 
 def getGhostDecay(visualizerData, rate_of_decay):
     decay_data = [np.array([0] * len(visualizerData[0])) for _ in range(len(visualizerData))]
@@ -195,6 +154,40 @@ def getGhostDecay(visualizerData, rate_of_decay):
 
 
     return np.array(decay_data)
+
+def createDrawables(fig, spectrumToShow, freqaxis, maxbarvalue):
+    visAxisType = AxisType.CARTESIAN
+    visShapeType = ShapeType.LINE
+    if (polar):
+        visAxisType = AxisType.POLAR
+    if (bars):
+        visShapeType = ShapeType.BAR
+
+    #create the ghost drawable
+    if (getAxis(fig, -10) != None):
+        ghost_color = '#2F2F2F'
+        ghostDecayRate = (-maxbarvalue) / framerate
+        ghost_decay_data = getGhostDecay(spectrumToShow, ghostDecayRate / 2)
+        ghostArtistData = getArtistData(freqaxis, ghost_decay_data[0], getAxis(fig, -10), ghost_color, ghost_color)
+        ghost_drawable = Drawable(ghostArtistData, ghost_decay_data, visAxisType, visShapeType, maxbarvalue)
+        drawables.append(ghost_drawable)
+
+    #create the main plot drawable
+    artistData = getArtistData(freqaxis, spectrumToShow[0], getAxis(fig, 0), bar_color, bar_edge_color)
+    visualizer_drawable = Drawable(artistData, spectrumToShow, visAxisType, visShapeType, maxbarvalue)
+    drawables.append(visualizer_drawable)
+
+    #create the background drawables, if necessary
+    if (getAxis(fig, -99) != None):
+        bkAxis = getAxis(fig, -99)
+        bkArtists = []
+        if (len(bkAxis.texts) > 0):
+            bkArtists.append(bkAxis.texts)
+        if (len(bkAxis.images) > 0):
+            bkArtists.append(bkAxis.images)
+        background_drawable = Drawable(bkArtists, None, AxisType.IMAGE, ShapeType.IMAGE)
+        drawables.append(background_drawable)
+
 
 def getArtistData(freqaxis, firstFrameData, axis, fillColor, edgeColor):
     artistData = []
@@ -433,7 +426,7 @@ if __name__ == '__main__':
     ghost = data["ghost"]
     drawables = []
     dpiMultiplier = 100
-    parse_audio()
+    generate_visualizer()
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
