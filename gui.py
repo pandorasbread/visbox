@@ -1,5 +1,6 @@
 import tkinter as tk
 from enum import Enum
+import re
 
 import PySimpleGUI as sg
 from settings import Settings
@@ -37,14 +38,14 @@ class Gui:
             [sg.Text('Visbox V.Dev.Alpha.4 (now with GUI!)', size=(42,1), justification='center', font=("Helvetica", 25), relief=sg.RELIEF_RIDGE)],
             [
                 sg.Text('Audio File', size=(15, 1), auto_size_text=False, justification='right'),
-                sg.InputText(self.settings.audio_file_path, disabled=True), sg.FileBrowse(size=(15,1), key=EventType.AUDIO_FILE_PATH, file_types=(("wav files", "*.wav"), ("MP3 files", "*.mp3")))
+                sg.InputText(self.settings.audio_file_path, disabled=True, enable_events=True, key=EventType.AUDIO_FILE_PATH), sg.FileBrowse(size=(15,1), file_types=(("wav files", "*.wav"), ("MP3 files", "*.mp3")))
             ],
             [sg.Frame(layout=[
-                [sg.Checkbox('Ghost', size=(17, 1), key=EventType.GHOST, default=self.settings.ghost), sg.Text('Max Frequency', size=(12,1), p=LABEL_PADDING), sg.Text('Frame Rate (in fps)', size=(15, 1), p=LABEL_PADDING)],
-                [sg.Checkbox('Circular Visualizer', default=self.settings.polar, size=(17, 1), key=EventType.POLAR), sg.InputText(self.settings.max_frequency, key=EventType.MAX_FREQ, size=(5, 1)), sg.Text('', size=(5,1)),sg.InputText(self.settings.framerate, key=EventType.FRAMERATE, size=(5, 1))],
+                [sg.Checkbox('Ghost', size=(17, 1), key=EventType.GHOST, default=self.settings.ghost, enable_events=True), sg.Text('Max Frequency', size=(12,1), p=LABEL_PADDING), sg.Text('Frame Rate (in fps)', size=(15, 1), p=LABEL_PADDING)],
+                [sg.Checkbox('Circular Visualizer', default=self.settings.polar, size=(17, 1), key=EventType.POLAR, enable_events=True), sg.InputText(self.settings.max_frequency, key=EventType.MAX_FREQ, size=(5, 1), enable_events=True), sg.Text('', size=(5,1)),sg.InputText(self.settings.framerate, key=EventType.FRAMERATE, size=(5, 1), enable_events=True)],
 
                 [sg.Text('', size=(11,1)), sg.Text('# of Bars', size=(8,1), p=LABEL_PADDING), sg.Text('Bar Scale', p=LABEL_PADDING)],
-                [sg.Radio('Bars', "barsorlines", default=True, enable_events=True, size=(8, 1), key=EventType.BARS), sg.InputText(self.settings.number_of_points, size=(5,1), key=EventType.NUMBER_OF_BARS), sg.Text('', size=(1,1)), sg.InputText(self.settings.bar_scale, key=EventType.BAR_SCALE, size=(5,1))],
+                [sg.Radio('Bars', "barsorlines", default=True, enable_events=True, size=(8, 1), key=EventType.BARS), sg.InputText(self.settings.number_of_points, size=(5,1), key=EventType.NUMBER_OF_BARS, enable_events=True), sg.Text('', size=(1,1)), sg.InputText(self.settings.bar_scale, key=EventType.BAR_SCALE, size=(5,1), enable_events=True)],
                 [sg.Radio('Line', "barsorlines", key=EventType.LINE, enable_events=True)],
 
                 [sg.Text('Fill Color', size=(12, 1), p=LABEL_PADDING), sg.Text('Edge Color', size=(10, 1), p=LABEL_PADDING)],
@@ -52,13 +53,13 @@ class Gui:
                 title='Visualizer Settings', relief=sg.RELIEF_SUNKEN,
                 tooltip='Use these to set flags', size=(400,250)),
                 sg.Frame(layout=[
-                    [sg.Text('Text to Show', size=(19,1), p=LABEL_PADDING),sg.Text('Text Color', size=(10, 1), p=LABEL_PADDING)],
+                    [sg.Text('Text to Show', size=(19,1), p=LABEL_PADDING, enable_events=True),sg.Text('Text Color', size=(10, 1), p=LABEL_PADDING)],
                     [sg.InputText(self.settings.text, key=EventType.TEXT, size=(20, 1)), sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.text_color), key=EventType.TEXT_COLOR)],
                     [sg.Text('', size=(18,1)), sg.Text('Text Outline Color', size=(14,1), p=LABEL_PADDING), sg.Text('Text Outline Width', size=(17,1), p=LABEL_PADDING)],
                     [sg.Checkbox('Use Text Outline', default=self.settings.use_text_outline, key=EventType.USE_TEXT_OUTLINE, size=(15,1), enable_events=True),
                      sg.Button('', size=(10, 1), button_color=('#000000', self.settings.text_outline_color), key=EventType.TEXT_OUTLINE_COLOR),
                      sg.Text('', size=(1, 1)),
-                     sg.InputText(self.settings.text_outline_width, key=EventType.TEXT_OUTLINE_WIDTH, size=(5, 1)), sg.Text('', size=(10,1))],
+                     sg.InputText(self.settings.text_outline_width, key=EventType.TEXT_OUTLINE_WIDTH, size=(5, 1), enable_events=True), sg.Text('', size=(10,1))],
                     ],
                     title='Text Settings', relief=sg.RELIEF_SUNKEN,
                     tooltip='Use these to set flags', size=(400,250)),
@@ -68,8 +69,8 @@ class Gui:
                     [sg.Text('only an image will be included.')],
                     [sg.Text('Background Color', size=(15, 1), p=LABEL_PADDING), sg.Text('Background Image', size=(15, 1), p=LABEL_PADDING)],
                     [sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bk_img_color), key=EventType.BK_COLOR), sg.Text('', size=(1,1)),
-                    sg.InputText(self.settings.bk_img_path, size=(15,1), disabled=True),
-                    sg.FileBrowse(key=EventType.BK_IMG_PATH, size=(15, 1), file_types=(("jpg files", "*.jpg"), ("jpeg files", "*.jpeg"), ("png files", "*.png")))]
+                    sg.InputText(self.settings.bk_img_path, size=(15,1), disabled=True, key=EventType.BK_IMG_PATH, enable_events=True),
+                    sg.FileBrowse(size=(15, 1), file_types=(("jpg files", "*.jpg"), ("jpeg files", "*.jpeg"), ("png files", "*.png")))]
                 ],
                     title='Background Settings', relief=sg.RELIEF_SUNKEN, size=(400, 150))],
             [sg.Frame(layout=[
@@ -88,15 +89,15 @@ class Gui:
             elif event == EventType.AUDIO_FILE_PATH:
                 continue
             elif event == EventType.NUMBER_OF_BARS:
-                self.updateIntField(self.numbars)
+                self.updateIntField(self.numbars, values[EventType.NUMBER_OF_BARS])
             elif event == EventType.POLAR:
                 continue
             elif event == EventType.GHOST:
                 continue
             elif event == EventType.BAR_SCALE:
-                continue
+                self.updateDecimalField(self.barscale, values[EventType.BAR_SCALE])
             elif event == EventType.MAX_FREQ:
-                continue
+                self.updateIntField(self.maxfreq, values[EventType.MAX_FREQ])
             elif event == EventType.BK_IMG_PATH:
                 continue
             elif event == EventType.TEXT:
@@ -105,9 +106,9 @@ class Gui:
                 self.textoutlinecolor.Update(disabled=not values[EventType.USE_TEXT_OUTLINE])
                 self.textoutlinewidth.Update(disabled=not values[EventType.USE_TEXT_OUTLINE])
             elif event == EventType.TEXT_OUTLINE_WIDTH:
-                continue
+                self.updateIntField(self.textoutlinewidth, values[EventType.TEXT_OUTLINE_WIDTH])
             elif event == EventType.FRAMERATE:
-                continue
+                self.updateIntField(self.framerate, values[EventType.FRAMERATE])
             elif event == EventType.RESOLUTION_TYPE:
                 continue
             elif event == EventType.FILL_COLOR:
@@ -129,6 +130,7 @@ class Gui:
                 self.numbars.Update(disabled=True)
                 self.numbars.Update(value=0)
 
+    
         #write a new/update a new/send a json file here or something
         self.window.close()
 
@@ -138,8 +140,11 @@ class Gui:
         color = colors[1]
         picker.Update(button_color=(color, color))
 
-    def updateIntField(self, field):
-        return
+    def updateIntField(self, field, value):
+            field.Update(re.sub("[^0-9]", "", value))
+
+    def updateDecimalField(self, field, value):
+            field.Update(re.sub("[^\d*\.?\d+$]", "", value))
 
 
 
