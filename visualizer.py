@@ -11,11 +11,15 @@ import pydub
 from drawable import AxisType, ShapeType, Drawable
 from gui import Gui
 from settings import Settings
+import logging
 
 class Visualizer:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        if (self.settings.number_of_points == 0):
+            self.settings.bars = False
+            self.settings.number_of_points = 80
         self.drawables = []
         pyplot.rcParams['animation.ffmpeg_path'] = self.determineFfmpegPath()
 
@@ -48,7 +52,8 @@ class Visualizer:
 
     def show_gui(self):
         gui = Gui(self.settings)
-        gui.handle_events()
+        newsettings = gui.handle_events()
+        return newsettings
         #timeseries, samplerate = self.loadFromFile()
         #spectrogram, freqaxis, maxbarvalue = self.getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate)
         #fig = self.configurePlot()

@@ -1,3 +1,5 @@
+import json
+
 class Settings:
     def __init__(self, data):
         self.number_of_points = data["number_of_bars"]
@@ -48,3 +50,28 @@ class Settings:
             return 1280, 720
         else:
             return 1000, 1000
+
+    def saveToJSON(self):
+        toSave = {
+            "audio_file_path": self.audio_file_path,
+            "number_of_bars": self.number_of_points,
+            "polar": self.polar,
+            "ghost": self.ghost,
+            "bar_scale": self.bar_scale,
+            "bar_color": self.bar_color,
+            "bar_edge_color": self.bar_edge_color,
+            "max_frequency": self.max_frequency,
+            "background_img_path": self.bk_img_path,
+            "background_color": self.bk_img_color,
+            "text": self.text,
+            "text_color": self.text_color,
+            "use_text_outline": self.use_text_outline,
+            "text_outline_color": self.text_outline_color,
+            "text_outline_width": self.text_outline_width,
+            "framerate": self.framerate,
+            "resolution": self.resolution_type
+        }
+
+        toSaveJson = json.dumps(toSave)
+        with open('config.json', 'w') as outfile:
+            json.dump(toSave, outfile)

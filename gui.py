@@ -28,6 +28,7 @@ class Gui:
         self.textcolor = self.window[EventType.TEXT_COLOR]
         self.textoutlinecolor = self.window[EventType.TEXT_OUTLINE_COLOR]
         self.bkcolor = self.window[EventType.BK_COLOR]
+        self.useedgecolor = self.window[EventType.USE_EDGE_COLOR]
         self.color = None
 
 
@@ -49,7 +50,7 @@ class Gui:
                 [sg.Radio('Line', "barsorlines", key=EventType.LINE, enable_events=True)],
 
                 [sg.Text('Fill Color', size=(12, 1), p=LABEL_PADDING), sg.Text('Edge Color', size=(10, 1), p=LABEL_PADDING)],
-                [sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bar_color), key=EventType.FILL_COLOR), sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bar_edge_color), key=EventType.EDGE_COLOR)]],
+                [sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bar_color), key=EventType.FILL_COLOR), sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bar_edge_color), key=EventType.EDGE_COLOR, disabled=self.settings.bar_edge_color == self.settings.bar_color), sg.Checkbox('Use Edge Color', default=self.settings.bar_edge_color != self.settings.bar_color, key=EventType.USE_EDGE_COLOR, size=(15,1), enable_events=True)]],
                 title='Visualizer Settings', relief=sg.RELIEF_SUNKEN,
                 tooltip='Use these to set flags', size=(400,250)),
                 sg.Frame(layout=[
@@ -70,12 +71,13 @@ class Gui:
                     [sg.Text('Background Color', size=(15, 1), p=LABEL_PADDING), sg.Text('Background Image', size=(15, 1), p=LABEL_PADDING)],
                     [sg.Button('', size=(10, 1), button_color=('#FFFFFF', self.settings.bk_img_color), key=EventType.BK_COLOR), sg.Text('', size=(1,1)),
                     sg.InputText(self.settings.bk_img_path, size=(15,1), disabled=True, key=EventType.BK_IMG_PATH, enable_events=True),
-                    sg.FileBrowse(size=(15, 1), file_types=(("jpg files", "*.jpg"), ("jpeg files", "*.jpeg"), ("png files", "*.png")))]
+                    sg.FileBrowse(size=(10, 1), file_types=(("jpg files", "*.jpg"), ("jpeg files", "*.jpeg"), ("png files", "*.png"))),
+                    sg.Button('Clear', size=(10, 1), key=EventType.CLEAR_IMAGE)]
                 ],
                     title='Background Settings', relief=sg.RELIEF_SUNKEN, size=(400, 150))],
             [sg.Frame(layout=[
                [sg.Text('Resolution', size=(12, 1), p=LABEL_PADDING), ],
-               [sg.InputCombo(key=EventType.RESOLUTION_TYPE, values=('720p', 'twitter', '1080p', '4k'), size=(10, 1), default_value=self.settings.resolution_type)]],
+               [sg.InputCombo(key=EventType.RESOLUTION_TYPE, values=('720p', 'twitter', '1080p', '4k'), size=(10, 1), default_value=self.settings.resolution_type, enable_events=True)]],
                title='Video Settings', relief=sg.RELIEF_SUNKEN)],
             [sg.Submit(key='Exit')],
         ]
@@ -100,6 +102,8 @@ class Gui:
                 self.updateIntField(self.maxfreq, values[EventType.MAX_FREQ])
             elif event == EventType.BK_IMG_PATH:
                 continue
+            elif event == EventType.CLEAR_IMAGE:
+                self.bkimg.Update('')
             elif event == EventType.TEXT:
                 continue
             elif event == EventType.USE_TEXT_OUTLINE:
@@ -113,6 +117,15 @@ class Gui:
                 continue
             elif event == EventType.FILL_COLOR:
                 self.updateColorPicker(self.fillcolor)
+                if (not values[EventType.USE_EDGE_COLOR]):
+                    self.edgecolor.Update(button_color=(self.fillcolor.ButtonColor[1],self.fillcolor.ButtonColor[1]))
+            elif event == EventType.USE_EDGE_COLOR:
+                if (not values[EventType.USE_EDGE_COLOR]):
+                    self.edgecolor.Update(button_color=(self.fillcolor.ButtonColor[1],self.fillcolor.ButtonColor[1]))
+                    self.edgecolor.Update(disabled=True)
+                else:
+                    self.edgecolor.Update(disabled=False)
+
             elif event == EventType.EDGE_COLOR:
                 self.updateColorPicker(self.edgecolor)
             elif event == EventType.TEXT_COLOR:
@@ -130,9 +143,11 @@ class Gui:
                 self.numbars.Update(disabled=True)
                 self.numbars.Update(value=0)
 
-    
+        self.updateSettings(values)
         #write a new/update a new/send a json file here or something
         self.window.close()
+        return self.settings
+
 
     def updateColorPicker(self, picker):
         colors = tk.colorchooser.askcolor(
@@ -146,7 +161,27 @@ class Gui:
     def updateDecimalField(self, field, value):
             field.Update(re.sub("[^\d*\.?\d+$]", "", value))
 
+    def updateSettings(self, values):
 
+        self.settings.audio_file_path = values[EventType.AUDIO_FILE_PATH]
+        self.settings.number_of_points = int(values[EventType.NUMBER_OF_BARS])
+        self.settings.polar = values[EventType.POLAR]
+        self.settings.ghost = values[EventType.GHOST]
+        self.settings.bar_scale = float(values[EventType.BAR_SCALE].strip('"'))
+        self.settings.max_frequency = int(values[EventType.MAX_FREQ])
+        self.settings.bk_img_path = values[EventType.BK_IMG_PATH]
+        self.settings.text = values[EventType.TEXT]
+        self.settings.use_text_outline = values[EventType.USE_TEXT_OUTLINE]
+        self.settings.text_outline_width = values[EventType.TEXT_OUTLINE_WIDTH]
+        self.settings.framerate = int(values[EventType.FRAMERATE])
+        self.settings.resolution_type = values[EventType.RESOLUTION_TYPE]
+        self.settings.resolution_x, self.settings.resolution_y = self.settings.getxyResolutions(values[EventType.RESOLUTION_TYPE])
+        self.settings.bar_color = self.fillcolor.ButtonColor[1]
+        self.settings.bar_edge_color = self.edgecolor.ButtonColor[1]
+        self.settings.text_color = self.textcolor.ButtonColor[1]
+        self.settings.text_outline_color = self.textoutlinecolor.ButtonColor[1]
+        self.settings.bk_img_color = self.bkcolor.ButtonColor[1]
+        self.settings.saveToJSON()
 
 class EventType(Enum):
     AUDIO_FILE_PATH = "audio_file_path"
@@ -168,4 +203,6 @@ class EventType(Enum):
     TEXT_OUTLINE_WIDTH = "text_outline_width"
     FRAMERATE = "framerate"
     RESOLUTION_TYPE = "resolution"
+    USE_EDGE_COLOR = "use_edge_color"
+    CLEAR_IMAGE = "clear_image"
 
