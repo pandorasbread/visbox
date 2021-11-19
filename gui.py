@@ -4,6 +4,8 @@ import re
 
 import PySimpleGUI as sg
 from settings import Settings
+from visualizer import Visualizer
+
 
 class Gui:
     def __init__(self, settings: Settings):
@@ -74,20 +76,28 @@ class Gui:
                     sg.FileBrowse(size=(10, 1), file_types=(("jpg files", "*.jpg"), ("jpeg files", "*.jpeg"), ("png files", "*.png"))),
                     sg.Button('Clear', size=(10, 1), key=EventType.CLEAR_IMAGE)]
                 ],
-                    title='Background Settings', relief=sg.RELIEF_SUNKEN, size=(400, 150))],
+                    title='Background Settings', relief=sg.RELIEF_SUNKEN, size=(400, 150)),
+            sg.Multiline(size=(40, 10), disabled=True)],
             [sg.Frame(layout=[
                [sg.Text('Resolution', size=(12, 1), p=LABEL_PADDING), ],
                [sg.InputCombo(key=EventType.RESOLUTION_TYPE, values=('720p', 'twitter', '1080p', '4k'), size=(10, 1), default_value=self.settings.resolution_type, enable_events=True)]],
                title='Video Settings', relief=sg.RELIEF_SUNKEN)],
-            [sg.Submit(key='Exit')],
+
+            [sg.Submit(key='Submit')],
         ]
 
     def handle_events(self):
         while True:
             event, values = self.window.read()
 
-            if event in (sg.WINDOW_CLOSED, 'Exit'):
+            if event == sg.WINDOW_CLOSED:
                 break
+            if event == 'Submit':
+                self.updateSettings(values)
+                vis = Visualizer(self.settings)
+                vis.generate_visualizer()
+                break
+
             elif event == EventType.AUDIO_FILE_PATH:
                 continue
             elif event == EventType.NUMBER_OF_BARS:
@@ -143,7 +153,7 @@ class Gui:
                 self.numbars.Update(disabled=True)
                 self.numbars.Update(value=0)
 
-        self.updateSettings(values)
+
         #write a new/update a new/send a json file here or something
         self.window.close()
         return self.settings

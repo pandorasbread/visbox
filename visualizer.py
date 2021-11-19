@@ -1,5 +1,6 @@
 import datetime
 import pathlib
+import sys
 from pathlib import Path
 import ffmpeg
 import librosa
@@ -9,7 +10,6 @@ import matplotlib.pyplot as pyplot
 import numpy as np
 import pydub
 from drawable import AxisType, ShapeType, Drawable
-from gui import Gui
 from settings import Settings
 import logging
 
@@ -22,6 +22,12 @@ class Visualizer:
             self.settings.number_of_points = 80
         self.drawables = []
         pyplot.rcParams['animation.ffmpeg_path'] = self.determineFfmpegPath()
+        logging.basicConfig(format='%(asctime)s %(message)s', filename='visualizer.log', encoding='utf-8', level=logging.INFO)
+        sys.excepthook = self.unhandledExceptionCatcher
+
+    def unhandledExceptionCatcher(self, exctype, value, tb):
+        logging.info('ERROR')
+
 
     def determineFfmpegPath(self):
         path = Path('.\\ffmpeg.exe')
@@ -37,28 +43,21 @@ class Visualizer:
         filepath = self.settings.audio_file_path
         filetype = pathlib.Path(filepath).suffix
         filename = pathlib.Path(filepath).stem
-        print('File type is ' + filetype)
+        logging.info('File type is ' + filetype)
         if (filetype == '.mp3'):
-            print('Converting to .wav...')
+            logging.info('Converting to .wav...')
             audiodata = pydub.AudioSegment.from_mp3(self.settings.audio_file_path)
             newFilePath = './' + filename + '.wav'
-            print('Saving new .wav file...')
+            logging.info('Saving new .wav file...')
             audiodata.export(newFilePath, format='wav')
-            print('File saved.')
+            logging.info('File saved.')
             filepath = newFilePath
 
-        print('Loading data from audio file.')
+        logging.info('Loading data from audio file.')
         return librosa.load(filepath)
 
-    def show_gui(self):
-        gui = Gui(self.settings)
-        newsettings = gui.handle_events()
-        return newsettings
-        #timeseries, samplerate = self.loadFromFile()
-        #spectrogram, freqaxis, maxbarvalue = self.getSpectrogramAndFrequencyAxisAndMaxDb(timeseries, samplerate)
-        #fig = self.configurePlot()
-        #self.createDrawables(fig, spectrogram, freqaxis, maxbarvalue)
-
+    def setSettings(self, newsettings):
+        self.settings = newsettings
 
     def generate_visualizer(self):
         timeseries, samplerate = self.loadFromFile()
@@ -125,7 +124,7 @@ class Visualizer:
         return value * self.settings.bar_scale
 
     def makeVideo(self, fig, freqaxis, dataLength):
-        print('Creating animation...')
+        logging.info('Creating animation...')
         # create video
         percentageTicks = self.getPercentageTicksArray(dataLength)
         anim = animation.FuncAnimation(fig, self.animate, frames=dataLength - 1, init_func=self.initAnimation,
@@ -136,17 +135,17 @@ class Visualizer:
         animStartTime = datetime.datetime.now()
         anim.save(animationfilename, writer=writervideo, dpi=self.settings.dpiMultiplier)
         delta = datetime.datetime.now() - animStartTime
-        print('Animating took ' + str(delta.seconds) + ' seconds.')
-        print('Animation completed. Rendering and saving animation (this can take a while)...')
+        logging.info('Animating took ' + str(delta.seconds) + ' seconds.')
+        logging.info('Animation completed. Rendering and saving animation (this can take a while)...')
         input_video = ffmpeg.input(animationfilename)
         input_audio = ffmpeg.input('./' + pathlib.Path(self.settings.audio_file_path).stem + '.wav')
         filename = pathlib.Path(self.settings.audio_file_path).stem + datetime.datetime.now().strftime(
             "%m%d-%H-%M-%S") + '.mp4'
-        print('Saving...')
+        logging.info('Saving...')
         ffmpeg.concat(input_video, input_audio, v=1, a=1).output(filename, **{'c:v': 'libx265'}, crf=20).run()
-        print('Waveform complete!')
+        logging.info('Waveform complete!')
         delta2 = datetime.datetime.now() - animStartTime
-        print('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str(
+        logging.info('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str(
             (dataLength - 1) / self.settings.framerate) + ' second video.')
 
     def getGhostDecay(self, visualizerData, rate_of_decay):
@@ -274,7 +273,7 @@ class Visualizer:
         ########################################
         if frame in progress:
             progress.pop(0)
-            print('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
+            logging.info('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
         return artists
 
     def draw_bars(self, drawable, frame_num):
@@ -337,7 +336,7 @@ class Visualizer:
 
     def createBackground(self, fig, ax):
         if (self.settings.bk_img_path != ''):
-            print('!!! IMAGE SPECIFIED, THIS WILL TAKE A LOT LONGER TO RENDER, SORRY!!!')
+            logging.info('!!! IMAGE SPECIFIED, THIS WILL TAKE A LOT LONGER TO RENDER, SORRY!!!')
             img = pyplot.imread(self.settings.bk_img_path)
             ax_image = self.createBackgroundAxisIfNotExists(fig)
             self.cleanCartesianPlot(ax_image)

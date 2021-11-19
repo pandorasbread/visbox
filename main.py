@@ -1,12 +1,13 @@
 import json
+
+from gui import Gui
 from settings import Settings
 from visualizer import Visualizer
 from os.path import exists
-import logging
 
 if __name__ == '__main__':
     # eventually pull in JSON object with wav, layout, and text data
-    logging.basicConfig(format='%(asctime)s %(message)s', filename='visualizer.log', encoding='utf-8')
+
     #the gui needs to create a new config file. the code that runs this will eventually be it's own file.
     jsonfilename = './sample.json'
     if (exists('./config.json')):
@@ -14,11 +15,14 @@ if __name__ == '__main__':
 
     with open(jsonfilename) as s:
         samplesettings = json.load(s)
-    demoVis = Visualizer(Settings(samplesettings))
-    newsettings = demoVis.show_gui()
 
-    visualizer = Visualizer(newsettings)
-    visualizer.generate_visualizer()
+    gui = Gui(Settings(samplesettings))
+    gui.handle_events()
+    #demoVis = Visualizer(Settings(samplesettings))
+    #newsettings = demoVis.show_gui()
+
+    #visualizer = Visualizer(newsettings)
+    #visualizer.generate_visualizer()
 
 
 
