@@ -5,7 +5,7 @@ This is to be built using pyinstaller or run on it's own.
 
 ## Dependencies
 - [FFmpeg](https://www.ffmpeg.org/download.html)
-- `pip install ffmpeg-pythong librosa matplotlib numpy pydub`
+- `pip install ffmpeg-python librosa matplotlib numpy pydub pysimplegui pyinstaller`
 
 ## JSON SETTINGS
 ### These are the various configurations and what they change if they are modified.
