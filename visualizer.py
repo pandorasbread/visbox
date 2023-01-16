@@ -3,15 +3,17 @@ import pathlib
 import sys
 from pathlib import Path
 import ffmpeg
-import librosa
+from librosa import load, stft, amplitude_to_db, core
 from matplotlib import animation
 import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as pyplot
 import numpy as np
 import pydub
+from bisect import bisect_left
+import logging
 from drawable import AxisType, ShapeType, Drawable
 from settings import Settings
-import logging
+
 
 class Visualizer:
 
@@ -22,7 +24,12 @@ class Visualizer:
             self.settings.number_of_points = 80
         self.drawables = []
         pyplot.rcParams['animation.ffmpeg_path'] = self.determineFfmpegPath()
-        logging.basicConfig(format='%(asctime)s %(message)s', filename='visualizer.log', encoding='utf-8', level=logging.INFO)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)  # or whatever
+        handler = logging.FileHandler('visualizer.log', 'w', 'utf-8')  # or whatever
+        handler.setFormatter(logging.Formatter('%(name)s %(message)s'))  # or whatever
+        root_logger.addHandler(handler)
+        root_logger.addHandler(logging.StreamHandler())
         sys.excepthook = self.unhandledExceptionCatcher
 
     def unhandledExceptionCatcher(self, exctype, value, tb):
@@ -54,7 +61,7 @@ class Visualizer:
             filepath = newFilePath
 
         logging.info('Loading data from audio file.')
-        return librosa.load(filepath)
+        return load(filepath)
 
     def setSettings(self, newsettings):
         self.settings = newsettings
@@ -70,10 +77,10 @@ class Visualizer:
         # skip parameter multiplier is one over the framerate. we can use it as a multiplier to pass less parameters around.
         skipParam = int(samplerate * (1 / self.settings.framerate))
 
-        shortTimeFourierTransform = np.abs(librosa.stft(timeseries, hop_length=skipParam, n_fft=2048 * 4))
-        spectrogram = librosa.amplitude_to_db(shortTimeFourierTransform, ref=np.max)
+        shortTimeFourierTransform = np.abs(stft(timeseries, hop_length=skipParam, n_fft=2048 * 4))
+        spectrogram = amplitude_to_db(shortTimeFourierTransform, ref=np.max)
 
-        freqaxis = librosa.core.fft_frequencies(samplerate, 2048 * 4)
+        freqaxis = core.fft_frequencies(sr= samplerate, n_fft=2048 * 4)
 
         freqaxisTemp = [x for x in freqaxis if x <= self.settings.max_frequency]
 
@@ -130,10 +137,12 @@ class Visualizer:
         anim = animation.FuncAnimation(fig, self.animate, frames=dataLength - 1, init_func=self.initAnimation,
                                        fargs=(freqaxis, percentageTicks, self.drawables), blit=True,
                                        interval=(1 / self.settings.framerate) * 1000)
+
         writervideo = animation.FFMpegWriter(fps=self.settings.framerate)
         animationfilename = pathlib.Path(self.settings.audio_file_path).stem + ' anim.mp4'
         animStartTime = datetime.datetime.now()
         anim.save(animationfilename, writer=writervideo, dpi=self.settings.dpiMultiplier)
+
         delta = datetime.datetime.now() - animStartTime
         logging.info('Animating took ' + str(delta.seconds) + ' seconds.')
         logging.info('Animation completed. Rendering and saving animation (this can take a while)...')
@@ -143,7 +152,7 @@ class Visualizer:
             "%m%d-%H-%M-%S") + '.mp4'
         logging.info('Saving...')
         ffmpeg.concat(input_video, input_audio, v=1, a=1).output(filename, **{'c:v': 'libx265'}, crf=20).run()
-        logging.info('Waveform complete!')
+        logging.info(filename + ' complete!')
         delta2 = datetime.datetime.now() - animStartTime
         logging.info('Overall, took about ' + str(delta2.seconds) + ' seconds to render a ' + str(
             (dataLength - 1) / self.settings.framerate) + ' second video.')
@@ -215,12 +224,27 @@ class Visualizer:
         return artistData
 
     def getPercentageTicksArray(self, totalNumFrames):
-        tenPercentTicks = []
-        tenPercent = round(totalNumFrames / 10)
-        for num in range(totalNumFrames):
-            if (num != 0 and num % tenPercent == 0):
-                tenPercentTicks.append(num)
-        return tenPercentTicks
+        percentTicks = []
+        onePercent = (totalNumFrames / 100)
+        lastindexvalue = 1
+        for i in range(1,100):
+            percentTicks.append(self.take_closest(range(totalNumFrames), onePercent*i))
+
+        return percentTicks
+
+    def take_closest(self, myList, myNumber):
+
+        pos = bisect_left(myList, myNumber)
+        if pos == 0:
+            return myList[0]
+        if pos == len(myList):
+            return myList[-1]
+        before = myList[pos - 1]
+        after = myList[pos]
+        if after - myNumber < myNumber - before:
+            return after
+        else:
+            return before
 
     def getLineData(self, freqaxis, ax, linecolor, fillcolor):
         line = ax.plot(freqaxis, color=linecolor)
@@ -260,8 +284,8 @@ class Visualizer:
         return artists
 
     def animate(self, frame, freqaxis, progress, drawables):
-
         artists = []
+        animStartTime = datetime.datetime.now()
         for item in drawables:
             if (item.shape_type == ShapeType.BAR):
                 self.draw_bars(item, frame)
@@ -270,10 +294,10 @@ class Visualizer:
                 self.draw_line(item, freqaxis, frame)
                 artists.extend(list(item.artist_info))
 
-        ########################################
-        if frame in progress:
+        if len(progress)>0 and progress[0] == frame:
+            logging.info('Animation ' + str(100 - (len(progress))) + '% complete')
             progress.pop(0)
-            logging.info('Animation ' + str(100 - (len(progress) * 10)) + '% complete')
+
         return artists
 
     def draw_bars(self, drawable, frame_num):

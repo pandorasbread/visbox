@@ -1,1 +1,1 @@
-pyinstaller -F .\main.py --additional-hooks-dir "./extra-hooks" --hidden-import="sklearn.neighbors._partition_nodes"
+pyinstaller -F .\main.py -n visbox --additional-hooks-dir "./extra-hooks" --collect-submodules "sklearn" --hidden-import="sklearn.metrics._pairwise_distances_reduction._datasets_pair" --hidden-import="sklearn.neighbors._partition_nodes" 

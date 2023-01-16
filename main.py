@@ -13,13 +13,23 @@ if __name__ == '__main__':
     if (exists('./config.json')):
         jsonfilename = './config.json'
 
+
     with open(jsonfilename) as s:
         samplesettings = json.load(s)
 
-    gui = Gui(Settings(samplesettings))
-    gui.handle_events()
-    #demoVis = Visualizer(Settings(samplesettings))
-    #newsettings = demoVis.show_gui()
+    if (samplesettings["use_user_interface"]):
+        gui = Gui(Settings(samplesettings))
+        gui.handle_events()
+        #demoVis = Visualizer(Settings(samplesettings))
+        #newsettings = demoVis.show_gui()
+
+    else:
+        visualizer = Visualizer(Settings(samplesettings))
+        visualizer.generate_visualizer()
+        input("Press enter to close the window.")
+
+
+
 
     #visualizer = Visualizer(newsettings)
     #visualizer.generate_visualizer()
